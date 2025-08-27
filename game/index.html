@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Forest Spirit Runner</title>
+<link rel="stylesheet" href="styles.css" />
+<!-- Rustic Fonts (A complete gamechanger) -->
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Patrick+Hand&display=swap" rel="stylesheet">
+</head>
+<body>
+<header class="container">
+  <h1>🪵 Forest Spirit Runner</h1>
+  <p class="sub">A cozy mythical game. (placeholder)</p>
+</header>
+
+<section class="container card" id="settings">
+  <h2>Player Setup</h2>
+  <form id="settingsForm">
+    <label> Player name <input id="playerName" name="playerName" type="text" placeholder="e.g., Carla" required /> </label>
+    <label> Difficulty 
+      <select id="difficulty" name="difficulty">
+        <option value="easy">Easy</option>
+        <option value="normal" selected>Normal</option>
+        <option value="hard">Hard</option>
+      </select>
+    </label>
+    <label class="row">
+      <input id="mute" name="mute" type="checkbox" /> Mute sounds
+    </label>
+    <button type="submit" class="primary">Save & Start</button>
+  </form>
+  <p class="hint">Your settings persist using Web Storage.</p>
+</section>
+
+<main class="container">
+  <canvas id="game" width="800" height="450" aria-label="Game canvas"></canvas>
+
+  <div id="controls" class="controls">
+    <button id="btnLeft" aria-label="Move left">⟵</button>
+    <button id="btnJump" aria-label="Jump">⤴</button>
+    <button id="btnRight" aria-label="Move right">⟶</button>
+    <button id="btnPause" aria-label="Pause">⏸</button>
+  </div>
+
+  <div id="overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="overTitle">
+    <div class="panel">
+      <h2 id="overTitle">Game Over</h2>
+      <p id="finalScore">Score: 0</p>
+      <p id="bestScore">High Score: 0</p>
+      <div class="row gap">
+        <button id="btnPlayAgain" class="primary">Play again</button>
+        <button id="btnToSettings">Back to settings</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="container foot">
+  <small> Coded for the UI Programming course. </small>
+</footer>
+
+<script src="main.js"></script>
+</body>
+</html>

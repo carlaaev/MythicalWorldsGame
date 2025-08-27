@@ -1,0 +1,272 @@
+:root{
+     --bg:#fdf6e3;
+     --card:#e5d4b3;
+     --accent:#e07b5a;
+     --accent2:#f2a65a;
+     --ink:#3b2f2f;
+     --muted:#8a7a6b;
+}
+
+
+/* Base Layout */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Patrick Hand', system-ui, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-size: 19px;
+}
+
+/* Headings */
+h1, h2, h3 {
+    font-family: 'IM Fell English SC', serif;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: 1px;
+}
+
+.container{
+    width:min(100%, 960px);
+    margin:0 auto;
+    padding:1rem;
+} 
+    
+.sub{
+    color:var(--muted);
+}
+
+.card{
+    background:var(--card);
+    padding:1rem;
+    border-radius:16px;
+    box-shadow:0 6px 20px rgba(0,0,0,.35);
+}
+
+/* Card / Panels */
+#settings {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 8px rgba(59,47,47,0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.6rem;
+}
+
+#settings form {
+    width: 100%;
+    max-width: 360px; /* compact width — change to 280/320 if you want smaller */
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin: 0;
+}
+
+#player-setup, #game-over {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 8px rgba(59,47,47,0.2);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+label{
+    display:block;
+    margin:.75rem 0 .25rem;
+}
+
+/* Inputs */
+input {
+    font-family: 'Patrick Hand', sans-serif;
+    font-size: 1rem;
+    background: #fff;
+    margin: 0.5rem 0;
+    color: var(--ink);
+    width: 100%;
+}
+
+input,select{
+    padding:.6rem .7rem;
+    border-radius:12px;
+    border:1px solid #1f2a44;
+}
+
+.row{
+    align-items:center;
+    gap:.5rem;
+} 
+
+/* Buttons */
+button {
+    font-family: 'IM Fell English SC', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    padding: 0.6rem 1.2rem;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    transition: 0.2s ease-in-out;
+}
+
+button.primary{
+    background:var(--accent);
+    color:#00301e;
+}
+
+button.primary:hover {
+  background: #d56a49; /* darker rustic red */
+}
+
+button:not(.primary){
+    background:var(--accent);
+    color:var(--ink);
+}
+
+button:active{
+    transform:translateY(1px);
+}
+
+.hint{
+    color:var(--muted);
+    margin-top:0.5rem;
+}
+
+/* Game Canvas */
+canvas{
+    display:block;
+    width:100%;
+    max-width:100%;
+    background:linear-gradient(#8a7a6b, #141515);
+    border:2px solid #1f2a44;
+    border-radius:12px;
+}
+
+.controls{
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* lexible grid */
+    gap: 0.75rem;
+    margin: 1rem 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.controls button{
+    font-size:1.3rem;
+}
+
+.overlay{
+    background: rgba(0,0,0,.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+.overlay.hidden{
+    display:none;
+}
+
+.overlay .panel {
+    max-width: 420px;
+}
+
+.panel{
+    background:var(--card);
+    padding:1rem;
+    border-radius:16px;
+}
+
+.row.gap{
+    gap:0.75rem;
+}
+
+/* Footer */
+.foot{
+    opacity:.8;
+    margin: 1rem auto 2rem;
+    text-align: center;
+    font-size: 0.9rem;
+    max-width: 90%;
+}
+
+/* Mobile-friendly! */
+@media (max-width: 1000px) {
+    /* Panels */
+    #settings,
+    #game-over,
+    .panel {
+        padding: 1rem;
+        max-width: 400px;
+    }
+
+    canvas {
+        height: auto;
+        max-width: 450px;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 500px) {
+    /* Panels */
+    #settings,
+    #game-over,
+    .panel {
+        padding: 1rem;
+        max-width: 360px;
+    }
+
+    input {
+        max-width: 200px;
+    }
+
+    input, select, button {
+        font-size: 15px;
+    }
+
+    canvas {
+        height: auto;
+        max-width: 450px;
+    }
+
+    /* Controls: Easier thumb layout */
+    .controls {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .controls button {
+        font-size: 20px;
+    }
+
+    /* Headings */
+
+    h1 {
+        font-size: 27px;
+    }
+
+    h2, h3 {
+        font-size: 20px;
+        word-wrap: break-word;
+        text-align: center;
+    }
+
+    body {
+        font-size: 15px;
+    }
+
+    .foot {
+        font-size: 15px;
+        text-align: center;
+    }
+}

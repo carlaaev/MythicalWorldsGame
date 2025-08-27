@@ -21,4 +21,9 @@ The loop is short, replayable, and encourages mastery of the forest.
 - **Touch:** Left / Right / Jump buttons (Upwards arrow does not indicate you can walk upwards, hence why there's a pause option instead of a downwards arrow.)
 
 ## Sketches
-The sketches attached in this same folder provide initial simpler ideas. I have tried to bring this design to live and better it. For this game's visuals, I believe the fonts and colour palette go a long way since it's loop focused.
+The sketches attached in this same folder provide initial simpler ideas. I have tried to bring this design to live and better it. For this game's visuals, I believe the fonts and colour palette go a long way since it's loop focused. I have replaced the lives idea with a score that goes up based off time spent playing.
+
+## Why a simple loop?
+- **Efficiency:** For this project, since I am not any expert in java I wanted to focus on a catchy looping game. There are different difficulty options (with wich only speed changes) but all of them have some degree of difficulty implemented. 
+- **Testing:** While testing the game myself and with other family members, they actually found this loop got them hooked instantly.
+- **Visuals:** I believe this approach allows me to put in the same amount of effort not only in the html but also the css part of the game. I researched fonts and palettes that would best represent its theme.

@@ -14,6 +14,8 @@ const btnLeft = document.getElementById("btnLeft");
 const btnRight = document.getElementById("btnRight");
 const btnJump = document.getElementById("btnJump");
 const btnPause = document.getElementById("btnPause");
+const spriteSheet = new Image();
+spriteSheet.src = "sprites.png";
 
 /* ---------- Game State ---------- */
 const state = {
@@ -32,14 +34,12 @@ const state = {
         vx: 0,
         vy: 0,
         onGround: false,
-        frame: 0,
-        t: 0
     },
     obstacles: [],
     lastSpawn: 0,
 };
 
-/* ---------- Load Settings from localStorage ---------- */
+/* ---------- Settings ---------- */
 (function loadSettings(){
     const saved = JSON.parse(localStorage.getItem('fsr.settings') || '{}');
     if(saved.playerName) nameInput.value = saved.playerName;
@@ -47,7 +47,6 @@ const state = {
     if(typeof saved.mute === 'boolean') muteInput.checked = saved.mute;
 })();
 
-/* ---------- Save Settings ---------- */
 function saveSettings(){
     localStorage.setItem('fsr.settings', JSON.stringify({
         playerName: nameInput.value.trim(),
@@ -59,6 +58,7 @@ function saveSettings(){
 /* ---------- Input ---------- */
 const keys = { left:false, right:false, jump:false };
 
+// Keyboard
 addEventListener('keydown', e => {
     if(e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
     if(e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
@@ -71,19 +71,22 @@ addEventListener('keyup', e => {
     if(e.key === ' ') keys.jump = false;
 });
 
-/* ---------- Touch Buttons ---------- */
+// Touch buttons
 function bindHold(btn, prop){
-    btn.addEventListener('pointerdown', ()=>{
-        keys[prop]=true;
-        btn.setPointerCapture && btn.setPointerCapture(1);
-    });
+    btn.addEventListener('pointerdown', ()=>{ keys[prop]=true; btn.setPointerCapture && btn.setPointerCapture(1); });
     btn.addEventListener('pointerup', ()=>keys[prop]=false);
     btn.addEventListener('pointerleave', ()=>keys[prop]=false);
 }
 bindHold(btnLeft, 'left');
 bindHold(btnRight, 'right');
-btnJump.addEventListener('click', ()=>{ keys.jump=true; setTimeout(()=>keys.jump=false, 60); });
-btnPause.addEventListener('click', togglePause);
+
+// Jump button for touch
+btnJump.addEventListener('click', ()=>{
+    if(state.player.onGround){
+        state.player.vy = jumpPower;
+        state.player.onGround = false;
+    }
+});
 
 /* ---------- Form ---------- */
 settingsForm.addEventListener('submit', e=>{
@@ -96,10 +99,10 @@ settingsForm.addEventListener('submit', e=>{
 
     state.running = true;
     overlay.classList.add('hidden');
-    canvas.classList.remove('hidden');
     document.getElementById('controls').classList.remove('hidden');
+    document.getElementById('settings').classList.add('hidden');
 
-    console.log(`Game started: ${state.playerName}, difficulty: ${state.difficulty}`);
+    startGame();
 });
 
 /* ---------- Overlay Buttons ---------- */
@@ -112,6 +115,11 @@ btnToSettings.addEventListener('click', ()=>{
     state.running=false;
     document.getElementById('settings').classList.remove('hidden');
 });
+btnJump.addEventListener('click', ()=>{
+    keys.jump = true;
+    setTimeout(()=>keys.jump=false, 200);
+});
+
 
 /* ---------- Pause ---------- */
 function togglePause(){
@@ -120,26 +128,138 @@ function togglePause(){
     btnPause.textContent = state.paused ? '▶' : '⏸';
 }
 
-/* ---------- Placeholder Canvas Draw ---------- */
-function drawPlaceholder(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle = '#a7c080';
-    ctx.fillRect(50, canvas.height-100, 48, 48); // simple player box
-    ctx.fillStyle = '#8b5a2b';
-    ctx.fillRect(200, canvas.height-80, 40, 40); // simple obstacle
-}
-function loop(ts){
-    if(state.running && !state.paused) drawPlaceholder();
-    requestAnimationFrame(loop);
-}
-requestAnimationFrame(loop);
+/* ---------- Game Functions ---------- */
+const gravity = 0.7;
+const jumpPower = -14;
+const groundY = canvas.height - 50;
 
-/* ---------- Start Game Function (reset player & score) ---------- */
 function startGame(){
     state.player.x = 120;
-    state.player.y = canvas.height - 100;
+    state.player.y = groundY - state.player.h;
+    state.player.vx = 0;
+    state.player.vy = 0;
     state.score = 0;
     state.obstacles = [];
+    state.lastSpawn = 0;
     state.running = true;
     state.paused = false;
 }
+
+function spawnObstacle(){
+    const width = 30 + Math.random()*20;
+    const height = 30 + Math.random()*30;
+    state.obstacles.push({
+        x: canvas.width + 10,
+        y: groundY - height,
+        w: width,
+        h: height,
+    });
+}
+
+function update(delta){
+    if(!state.running || state.paused) return;
+
+    const speed = state.difficulty === 'easy' ? 4 : state.difficulty === 'normal' ? 6 : 8;
+
+    /* Player movement */
+    if(keys.left) state.player.x -= speed;
+    if(keys.right) state.player.x += speed;
+
+    /* Gravity */
+    state.player.vy += gravity;
+    state.player.y += state.player.vy;
+
+    /* Jump (keyboard only) */
+    if(keys.jump && state.player.onGround){
+        state.player.vy = jumpPower;
+        state.player.onGround = false;
+        keys.jump = false; // consume jump key so it triggers only once
+    }
+
+    /* Ground collision */
+    if(state.player.y + state.player.h >= groundY){
+        state.player.y = groundY - state.player.h;
+        state.player.vy = 0;
+        state.player.onGround = true;
+    } else {
+        state.player.onGround = false;
+    }
+
+    /* Spawn obstacles */
+    state.lastSpawn += delta;
+    if(state.lastSpawn > 1500){
+        spawnObstacle();
+        state.lastSpawn = 0;
+    }
+
+    /* Update obstacles */
+    for(let obs of state.obstacles){
+        obs.x -= speed;
+    }
+    state.obstacles = state.obstacles.filter(o=>o.x+o.w>0);
+
+    /* Collision check */
+    for(let obs of state.obstacles){
+        if(rectIntersect(state.player, obs)){
+            gameOver();
+            return;
+        }
+    }
+
+    /* Score */
+    state.score += delta * 0.01;
+}
+
+/* ---------- Draw ---------- */
+function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    /* Background ground (Grass!) */
+    ctx.fillStyle = '#8fbf8f';
+    ctx.fillRect(0, groundY, canvas.width, canvas.height-groundY);
+
+    /* Player placeholder */
+    ctx.fillStyle = "#e07b5a";
+    ctx.fillRect(state.player.x, state.player.y, state.player.w, state.player.h);
+
+    /* Obstacles placeholder */
+    ctx.fillStyle = "#8a7a6b";
+    state.obstacles.forEach(o => ctx.fillRect(o.x, o.y, o.w, o.h));
+
+    /* Score */
+    ctx.fillStyle = '#3b2f2f';
+    ctx.font = '20px "Patrick Hand"';
+    ctx.fillText(`Score: ${Math.floor(state.score)}`, 10, 30);
+}
+
+/* ---------- Collision ---------- */
+function rectIntersect(a,b){
+    return a.x < b.x + b.w &&
+           a.x + a.w > b.x &&
+           a.y < b.y + b.h &&
+           a.y + a.h > b.y;
+}
+
+/* ---------- Game Over ---------- */
+function gameOver(){
+    state.running = false;
+    finalScoreEl.textContent = `Score: ${Math.floor(state.score)}`;
+    if(state.score > state.highScore){
+        state.highScore = Math.floor(state.score);
+        localStorage.setItem('fsr.highscore', state.highScore);
+    }
+    bestScoreEl.textContent = `High Score: ${state.highScore}`;
+    overlay.classList.remove('hidden');
+}
+
+/* ---------- Main Loop ---------- */
+let lastTime = 0;
+function loop(time){
+    const delta = time - lastTime;
+    lastTime = time;
+
+    update(delta);
+    draw();
+    requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);

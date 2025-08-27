@@ -146,10 +146,18 @@ function startGame(){
 }
 
 function spawnObstacle(){
-    const width = 30 + Math.random()*20;
-    const height = 30 + Math.random()*30;
+    // Vary width/height
+    const width = 20 + Math.random() * 40;  // 20-60px wide
+    const height = 20 + Math.random() * 50; // 20-70px tall
+    const minGap = 80;  // Minimum gap between obstacles
+    const lastObs = state.obstacles[state.obstacles.length - 1];
+    const lastX = lastObs ? lastObs.x + lastObs.w : canvas.width;
+
+    // Place the new obstacle beyond the last one with some random spacing
+    const xPos = Math.max(canvas.width + 10, lastX + minGap + Math.random() * 50);
+
     state.obstacles.push({
-        x: canvas.width + 10,
+        x: xPos,
         y: groundY - height,
         w: width,
         h: height,
@@ -159,21 +167,20 @@ function spawnObstacle(){
 function update(delta){
     if(!state.running || state.paused) return;
 
-    const speed = state.difficulty === 'easy' ? 4 : state.difficulty === 'normal' ? 6 : 8;
+    // Speed scales with difficulty and score
+    const baseSpeed = state.difficulty === 'easy' ? 4 : state.difficulty === 'normal' ? 6 : 8;
+    const speed = baseSpeed + Math.floor(state.score / 100); // Slightly faster over time
 
     /* Player movement */
     if(keys.left) state.player.x -= speed;
     if(keys.right) state.player.x += speed;
-
-    /* Gravity */
     state.player.vy += gravity;
     state.player.y += state.player.vy;
 
-    /* Jump (keyboard only) */
+    /* Jump */
     if(keys.jump && state.player.onGround){
         state.player.vy = jumpPower;
         state.player.onGround = false;
-        keys.jump = false; // consume jump key so it triggers only once
     }
 
     /* Ground collision */
@@ -181,13 +188,11 @@ function update(delta){
         state.player.y = groundY - state.player.h;
         state.player.vy = 0;
         state.player.onGround = true;
-    } else {
-        state.player.onGround = false;
     }
 
     /* Spawn obstacles */
     state.lastSpawn += delta;
-    if(state.lastSpawn > 1500){
+    if(state.lastSpawn > 1200){ // faster spawn for added challenge
         spawnObstacle();
         state.lastSpawn = 0;
     }

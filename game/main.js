@@ -119,6 +119,7 @@ btnJump.addEventListener('click', ()=>{
     keys.jump = true;
     setTimeout(()=>keys.jump=false, 200);
 });
+btnPause.addEventListener('click', togglePause);
 
 
 /* ---------- Pause ---------- */
@@ -255,7 +256,6 @@ function draw(){
         layer.elements.forEach(el => {
             el.x -= layer.speed;
         });
-        // recycle elements
         if(layer.elements[0].x + layer.elements[0].w < 0){
             const el = layer.elements.shift();
             el.x = layer.elements[layer.elements.length-1].x + el.w;
@@ -275,10 +275,14 @@ function draw(){
     ctx.fillStyle = "#8a7a6b";
     state.obstacles.forEach(o => ctx.fillRect(o.x, o.y, o.w, o.h));
 
-    /* Score */
+    /* HUD */
     ctx.fillStyle = '#3b2f2f';
     ctx.font = '20px "Patrick Hand"';
-    ctx.fillText(`Score: ${Math.floor(state.score)}`, 10, 30);
+    ctx.fillText(
+        `${state.playerName || "Player"} | Difficulty: ${state.difficulty}`,
+        10, 30
+    );
+    ctx.fillText(`Score: ${Math.floor(state.score)}`, 10, 60);
 }
 
 /* ---------- Collision ---------- */
@@ -307,8 +311,25 @@ function loop(time){
     const delta = time - lastTime;
     lastTime = time;
 
-    update(delta);
-    draw();
+    if (state.running) {
+        if (!state.paused) {
+            update(delta);
+            draw();
+        } else {
+            // draw paused scene
+            draw();
+
+            // overlay
+            ctx.fillStyle = "rgba(0,0,0,0.4)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#fff";
+            ctx.font = '40px "Patrick Hand"';
+            ctx.textAlign = "center";
+            ctx.fillText("PAUSED", canvas.width/2, canvas.height/2);
+            ctx.textAlign = "left";
+        }
+    }
+
     requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);

@@ -215,11 +215,55 @@ function update(delta){
     state.score += delta * 0.01;
 }
 
+/* ---------- Background Layers ---------- */
+const bgLayers = [
+    { speed: 0.2, color: "#cce6ff", elements: [] }, // Sky
+    { speed: 0.5, color: "#99cc99", elements: [] }, // Distant trees
+];
+
+// Fill background layers with rectangles (simple placeholders)
+function initBackground(){
+    bgLayers.forEach((layer, idx) => {
+        layer.elements = [];
+        for(let i=0; i<5; i++){
+            layer.elements.push({
+                x: i * canvas.width/2,
+                y: idx === 0 ? 0 : groundY - 100,
+                w: canvas.width/2,
+                h: idx === 0 ? groundY : 100,
+            });
+        }
+    });
+}
+initBackground();
+
+
 /* ---------- Draw ---------- */
 function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    /* Background ground (Grass!) */
+    /* Background layers */
+    bgLayers.forEach(layer => {
+        ctx.fillStyle = layer.color;
+        layer.elements.forEach(el => {
+            ctx.fillRect(el.x, el.y, el.w, el.h);
+        });
+    });
+
+    /* Scroll backgrounds */
+    bgLayers.forEach(layer => {
+        layer.elements.forEach(el => {
+            el.x -= layer.speed;
+        });
+        // recycle elements
+        if(layer.elements[0].x + layer.elements[0].w < 0){
+            const el = layer.elements.shift();
+            el.x = layer.elements[layer.elements.length-1].x + el.w;
+            layer.elements.push(el);
+        }
+    });
+
+    /* Ground */
     ctx.fillStyle = '#8fbf8f';
     ctx.fillRect(0, groundY, canvas.width, canvas.height-groundY);
 

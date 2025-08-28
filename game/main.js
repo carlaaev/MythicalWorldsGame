@@ -14,10 +14,18 @@ const btnLeft = document.getElementById("btnLeft");
 const btnRight = document.getElementById("btnRight");
 const btnJump = document.getElementById("btnJump");
 const btnPause = document.getElementById("btnPause");
-const spriteSheet = new Image();
-spriteSheet.src = "sprites.png";
 
+const LOGICAL_WIDTH = 800;
+const LOGICAL_HEIGHT = 450;
 let scale = 1;
+
+/* ---------- Audio ---------- */
+const jumpSound = new Audio('assets/jump.mp3'); // place your mp3 in assets
+jumpSound.volume = 0.5;
+
+const bgMusic = new Audio('assets/background.mp3'); // background music
+bgMusic.loop = true;
+bgMusic.volume = 0.3;
 
 /* ---------- Game State ---------- */
 const state = {
@@ -74,11 +82,12 @@ function bindHold(btn, prop){
 bindHold(btnLeft, 'left');
 bindHold(btnRight, 'right');
 
-// Jump button for touch
-btnJump.addEventListener('pointerdown', ()=> {
+// Jump touch button
+btnJump.addEventListener('pointerdown', ()=>{ 
     if(state.player.onGround){
         state.player.vy = jumpPower;
         state.player.onGround = false;
+        if(!state.mute) jumpSound.play();
     }
 });
 btnJump.addEventListener('pointerup', ()=>keys.jump=false);
@@ -97,12 +106,17 @@ settingsForm.addEventListener('submit', e=>{
     document.getElementById('controls').classList.remove('hidden');
     document.getElementById('settings').classList.add('hidden');
 
+    if(!state.mute) bgMusic.play();
     startGame();
 });
 
 /* ---------- Overlay Buttons ---------- */
 btnPlayAgain.addEventListener('click', ()=>{ overlay.classList.add('hidden'); startGame(); });
-btnToSettings.addEventListener('click', ()=>{ overlay.classList.add('hidden'); state.running=false; document.getElementById('settings').classList.remove('hidden'); });
+btnToSettings.addEventListener('click', ()=>{
+    overlay.classList.add('hidden');
+    state.running=false;
+    document.getElementById('settings').classList.remove('hidden');
+});
 btnJump.addEventListener('click', ()=>{ keys.jump = true; setTimeout(()=>keys.jump=false, 200); });
 btnPause.addEventListener('click', togglePause);
 
@@ -111,15 +125,17 @@ function togglePause(){
     if(!state.running) return;
     state.paused = !state.paused;
     btnPause.textContent = state.paused ? '▶' : '⏸';
+    if(state.paused) bgMusic.pause();
+    else if(!state.mute) bgMusic.play();
 }
 
 /* ---------- Game Functions ---------- */
 const gravity = 0.7;
 const jumpPower = -14;
 
-/* ---------- Dynamic Ground ---------- */
-const groundOffset = 50; 
-function getGroundY() { return canvas.height - groundOffset; }
+function getGroundY(){
+    return canvas.height - 50;
+}
 
 function startGame(){
     state.player.x = 120;
@@ -134,26 +150,26 @@ function startGame(){
 }
 
 /* ---------- Obstacles ---------- */
-function spawnObstacle() {
-    const width = 20 + Math.random()*40;
-    const height = 20 + Math.random()*50;
+function spawnObstacle(){
+    const width = 20 + Math.random() * 40;
+    const height = 20 + Math.random() * 50;
     const colors = ["#8a7a6b","#d9c2a2","#b07b4f"];
     const color = colors[Math.floor(Math.random()*colors.length)];
-
     state.obstacles.push({
         x: canvas.width + 10,
         y: getGroundY() - height,
         w: width,
         h: height,
-        color: color
+        color: color,
     });
 }
 
+/* ---------- Update ---------- */
 function update(delta){
     if(!state.running || state.paused) return;
 
-    const baseSpeed = state.difficulty === 'easy' ? 4 : state.difficulty === 'normal' ? 6 : 8;
-    const speed = baseSpeed + Math.floor(state.score / 100);
+    const baseSpeed = state.difficulty==='easy'?4:state.difficulty==='normal'?6:8;
+    const speed = baseSpeed + Math.floor(state.score/100);
 
     if(keys.left) state.player.x -= speed;
     if(keys.right) state.player.x += speed;
@@ -164,45 +180,43 @@ function update(delta){
     if(keys.jump && state.player.onGround){
         state.player.vy = jumpPower;
         state.player.onGround = false;
+        if(!state.mute) jumpSound.play();
     }
 
-    if(state.player.y + state.player.h >= getGroundY()){
-        state.player.y = getGroundY() - state.player.h;
+    const groundY = getGroundY();
+    if(state.player.y + state.player.h >= groundY){
+        state.player.y = groundY - state.player.h;
         state.player.vy = 0;
         state.player.onGround = true;
     }
 
     state.lastSpawn += delta;
-    if(state.lastSpawn > 1200){
-        spawnObstacle();
-        state.lastSpawn = 0;
+    if(state.lastSpawn > 1200){ spawnObstacle(); state.lastSpawn = 0; }
+
+    for(let obs of state.obstacles) obs.x -= speed;
+    state.obstacles = state.obstacles.filter(o => o.x+o.w>0);
+
+    for(let obs of state.obstacles){
+        if(rectIntersect(state.player, obs)) gameOver();
     }
 
-    for(let obs of state.obstacles){ obs.x -= speed; }
-    state.obstacles = state.obstacles.filter(o => o.x + o.w > 0);
-
-    for(let obs of state.obstacles){ if(rectIntersect(state.player, obs)){ gameOver(); return; } }
-
-    state.score += delta * 0.01;
+    state.score += delta*0.01;
 }
 
-/* ---------- Background Layers ---------- */
+/* ---------- Background ---------- */
 const bgLayers = [
-    { speed: 0.2, color: "#cce6ff", elements: [] },
-    { speed: 0.5, color: "#99cc99", elements: [] },
-    { speed: 0.8, color: "#6b8a6b", elements: [] },
+    { speed:0.2, color:"#cce6ff", elements:[] },
+    { speed:0.5, color:"#99cc99", elements:[] },
 ];
-
 function initBackground(){
-    bgLayers.forEach((layer, idx) => {
+    bgLayers.forEach((layer,idx)=>{
         layer.elements = [];
-        const height = idx === 0 ? getGroundY() : 40;
-        for(let i=0; i<5; i++){
+        for(let i=0;i<5;i++){
             layer.elements.push({
-                x: i*canvas.width/2,
-                y: idx === 0 ? 0 : getGroundY() - height,
+                x:i*canvas.width/2,
+                y: idx===0?0:getGroundY()-100,
                 w: canvas.width/2,
-                h: height
+                h: idx===0?getGroundY():100,
             });
         }
     });
@@ -213,38 +227,36 @@ initBackground();
 function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    ctx.save();
-    ctx.scale(scale, scale);
+    // Background
+    bgLayers.forEach(layer=>{
+        ctx.fillStyle=layer.color;
+        layer.elements.forEach(el=>ctx.fillRect(el.x,el.y,el.w,el.h));
 
-    bgLayers.forEach(layer => {
-        ctx.fillStyle = layer.color;
-        layer.elements.forEach(el => ctx.fillRect(el.x, el.y, el.w, el.h));
-
-        layer.elements.forEach(el => el.x -= layer.speed);
-        if(layer.elements[0].x + layer.elements[0].w < 0){
+        // Scroll
+        layer.elements.forEach(el=>el.x -= layer.speed);
+        if(layer.elements[0].x + layer.elements[0].w <0){
             const el = layer.elements.shift();
             el.x = layer.elements[layer.elements.length-1].x + el.w;
             layer.elements.push(el);
         }
     });
 
-    ctx.fillStyle = '#8fbf8f';
-    ctx.fillRect(0, getGroundY(), canvas.width, canvas.height - getGroundY());
+    // Ground
+    ctx.fillStyle="#8fbf8f";
+    ctx.fillRect(0,getGroundY(),canvas.width,canvas.height-getGroundY());
 
-    ctx.fillStyle = "#e07b5a";
-    ctx.fillRect(state.player.x, state.player.y, state.player.w, state.player.h);
+    // Player
+    ctx.fillStyle="#e07b5a";
+    ctx.fillRect(state.player.x,state.player.y,state.player.w,state.player.h);
 
-    state.obstacles.forEach(o => {
-        ctx.fillStyle = o.color;
-        ctx.fillRect(o.x, o.y, o.w, o.h);
-    });
+    // Obstacles
+    state.obstacles.forEach(o=>{ ctx.fillStyle=o.color; ctx.fillRect(o.x,o.y,o.w,o.h); });
 
-    ctx.fillStyle = '#3b2f2f';
-    ctx.font = '20px "Patrick Hand"';
-    ctx.fillText(`${state.playerName || "Player"} | Difficulty: ${state.difficulty}`, 10, 30);
-    ctx.fillText(`Score: ${Math.floor(state.score)}`, 10, 60);
-
-    ctx.restore();
+    // HUD
+    ctx.fillStyle="#3b2f2f";
+    ctx.font='20px "Patrick Hand"';
+    ctx.fillText(`${state.playerName||"Player"} | Difficulty: ${state.difficulty}`,10,30);
+    ctx.fillText(`Score: ${Math.floor(state.score)}`,10,60);
 }
 
 /* ---------- Collision ---------- */
@@ -257,33 +269,34 @@ function rectIntersect(a,b){
 
 /* ---------- Game Over ---------- */
 function gameOver(){
-    state.running = false;
-    finalScoreEl.textContent = `Score: ${Math.floor(state.score)}`;
-    if(state.score > state.highScore){
-        state.highScore = Math.floor(state.score);
-        localStorage.setItem('fsr.highscore', state.highScore);
+    state.running=false;
+    if(!state.mute) bgMusic.pause();
+    finalScoreEl.textContent=`Score: ${Math.floor(state.score)}`;
+    if(state.score>state.highScore){
+        state.highScore=Math.floor(state.score);
+        localStorage.setItem('fsr.highscore',state.highScore);
     }
-    bestScoreEl.textContent = `High Score: ${state.highScore}`;
+    bestScoreEl.textContent=`High Score: ${state.highScore}`;
     overlay.classList.remove('hidden');
 }
 
 /* ---------- Main Loop ---------- */
-let lastTime = 0;
+let lastTime=0;
 function loop(time){
-    const delta = time - lastTime;
+    const delta = time-lastTime;
     lastTime = time;
 
     if(state.running){
+        if(!state.paused) update(delta);
         draw();
-        if(!state.paused){ update(delta); }
-        else {
-            ctx.fillStyle = "rgba(0,0,0,0.4)";
+        if(state.paused){
+            ctx.fillStyle="rgba(0,0,0,0.4)";
             ctx.fillRect(0,0,canvas.width,canvas.height);
-            ctx.fillStyle = "#fff";
-            ctx.font = '40px "Patrick Hand"';
-            ctx.textAlign = "center";
-            ctx.fillText("PAUSED", canvas.width/2, canvas.height/2);
-            ctx.textAlign = "left";
+            ctx.fillStyle="#fff";
+            ctx.font='40px "Patrick Hand"';
+            ctx.textAlign="center";
+            ctx.fillText("PAUSED",canvas.width/2,canvas.height/2);
+            ctx.textAlign="left";
         }
     }
 
@@ -291,12 +304,11 @@ function loop(time){
 }
 requestAnimationFrame(loop);
 
-/* ---------- Mobile-friendly Canvas ---------- */
+/* ---------- Responsive Canvas ---------- */
 function resizeCanvas(){
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width;
     canvas.height = rect.height;
-    initBackground();
 }
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();

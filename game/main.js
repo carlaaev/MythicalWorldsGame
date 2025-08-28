@@ -17,6 +17,8 @@ const btnPause = document.getElementById("btnPause");
 const spriteSheet = new Image();
 spriteSheet.src = "sprites.png";
 
+let scale = 1;
+
 /* ---------- Game State ---------- */
 const state = {
     playerName: '',
@@ -26,15 +28,7 @@ const state = {
     paused: false,
     score: 0,
     highScore: +(localStorage.getItem('fsr.highscore') || 0),
-    player: {
-        x: 120,
-        y: 300,
-        w: 48,
-        h: 48,
-        vx: 0,
-        vy: 0,
-        onGround: false,
-    },
+    player: { x: 120, y: 300, w: 48, h: 48, vx: 0, vy: 0, onGround: false },
     obstacles: [],
     lastSpawn: 0,
 };
@@ -81,12 +75,13 @@ bindHold(btnLeft, 'left');
 bindHold(btnRight, 'right');
 
 // Jump button for touch
-btnJump.addEventListener('click', ()=>{
+btnJump.addEventListener('pointerdown', ()=> {
     if(state.player.onGround){
         state.player.vy = jumpPower;
         state.player.onGround = false;
     }
 });
+btnJump.addEventListener('pointerup', ()=>keys.jump=false);
 
 /* ---------- Form ---------- */
 settingsForm.addEventListener('submit', e=>{
@@ -106,21 +101,10 @@ settingsForm.addEventListener('submit', e=>{
 });
 
 /* ---------- Overlay Buttons ---------- */
-btnPlayAgain.addEventListener('click', ()=>{
-    overlay.classList.add('hidden');
-    startGame();
-});
-btnToSettings.addEventListener('click', ()=>{
-    overlay.classList.add('hidden');
-    state.running=false;
-    document.getElementById('settings').classList.remove('hidden');
-});
-btnJump.addEventListener('click', ()=>{
-    keys.jump = true;
-    setTimeout(()=>keys.jump=false, 200);
-});
+btnPlayAgain.addEventListener('click', ()=>{ overlay.classList.add('hidden'); startGame(); });
+btnToSettings.addEventListener('click', ()=>{ overlay.classList.add('hidden'); state.running=false; document.getElementById('settings').classList.remove('hidden'); });
+btnJump.addEventListener('click', ()=>{ keys.jump = true; setTimeout(()=>keys.jump=false, 200); });
 btnPause.addEventListener('click', togglePause);
-
 
 /* ---------- Pause ---------- */
 function togglePause(){
@@ -132,11 +116,14 @@ function togglePause(){
 /* ---------- Game Functions ---------- */
 const gravity = 0.7;
 const jumpPower = -14;
-const groundY = canvas.height - 50;
+
+/* ---------- Dynamic Ground ---------- */
+const groundOffset = 50; 
+function getGroundY() { return canvas.height - groundOffset; }
 
 function startGame(){
     state.player.x = 120;
-    state.player.y = groundY - state.player.h;
+    state.player.y = getGroundY() - state.player.h;
     state.player.vx = 0;
     state.player.vy = 0;
     state.score = 0;
@@ -146,116 +133,94 @@ function startGame(){
     state.paused = false;
 }
 
-function spawnObstacle(){
-    // Vary width/height
-    const width = 20 + Math.random() * 40;  // 20-60px wide
-    const height = 20 + Math.random() * 50; // 20-70px tall
-    const minGap = 80;  // Minimum gap between obstacles
-    const lastObs = state.obstacles[state.obstacles.length - 1];
-    const lastX = lastObs ? lastObs.x + lastObs.w : canvas.width;
-
-    // Place the new obstacle beyond the last one with some random spacing
-    const xPos = Math.max(canvas.width + 10, lastX + minGap + Math.random() * 50);
+/* ---------- Obstacles ---------- */
+function spawnObstacle() {
+    const width = 20 + Math.random()*40;
+    const height = 20 + Math.random()*50;
+    const colors = ["#8a7a6b","#d9c2a2","#b07b4f"];
+    const color = colors[Math.floor(Math.random()*colors.length)];
 
     state.obstacles.push({
-        x: xPos,
-        y: groundY - height,
+        x: canvas.width + 10,
+        y: getGroundY() - height,
         w: width,
         h: height,
+        color: color
     });
 }
 
 function update(delta){
     if(!state.running || state.paused) return;
 
-    // Speed scales with difficulty and score
     const baseSpeed = state.difficulty === 'easy' ? 4 : state.difficulty === 'normal' ? 6 : 8;
-    const speed = baseSpeed + Math.floor(state.score / 100); // Slightly faster over time
+    const speed = baseSpeed + Math.floor(state.score / 100);
 
-    /* Player movement */
     if(keys.left) state.player.x -= speed;
     if(keys.right) state.player.x += speed;
+
     state.player.vy += gravity;
     state.player.y += state.player.vy;
 
-    /* Jump */
     if(keys.jump && state.player.onGround){
         state.player.vy = jumpPower;
         state.player.onGround = false;
     }
 
-    /* Ground collision */
-    if(state.player.y + state.player.h >= groundY){
-        state.player.y = groundY - state.player.h;
+    if(state.player.y + state.player.h >= getGroundY()){
+        state.player.y = getGroundY() - state.player.h;
         state.player.vy = 0;
         state.player.onGround = true;
     }
 
-    /* Spawn obstacles */
     state.lastSpawn += delta;
-    if(state.lastSpawn > 1200){ // faster spawn for added challenge
+    if(state.lastSpawn > 1200){
         spawnObstacle();
         state.lastSpawn = 0;
     }
 
-    /* Update obstacles */
-    for(let obs of state.obstacles){
-        obs.x -= speed;
-    }
-    state.obstacles = state.obstacles.filter(o=>o.x+o.w>0);
+    for(let obs of state.obstacles){ obs.x -= speed; }
+    state.obstacles = state.obstacles.filter(o => o.x + o.w > 0);
 
-    /* Collision check */
-    for(let obs of state.obstacles){
-        if(rectIntersect(state.player, obs)){
-            gameOver();
-            return;
-        }
-    }
+    for(let obs of state.obstacles){ if(rectIntersect(state.player, obs)){ gameOver(); return; } }
 
-    /* Score */
     state.score += delta * 0.01;
 }
 
 /* ---------- Background Layers ---------- */
 const bgLayers = [
-    { speed: 0.2, color: "#cce6ff", elements: [] }, // Sky
-    { speed: 0.5, color: "#99cc99", elements: [] }, // Distant trees
+    { speed: 0.2, color: "#cce6ff", elements: [] },
+    { speed: 0.5, color: "#99cc99", elements: [] },
+    { speed: 0.8, color: "#6b8a6b", elements: [] },
 ];
 
-// Fill background layers with rectangles (simple placeholders)
 function initBackground(){
     bgLayers.forEach((layer, idx) => {
         layer.elements = [];
+        const height = idx === 0 ? getGroundY() : 40;
         for(let i=0; i<5; i++){
             layer.elements.push({
-                x: i * canvas.width/2,
-                y: idx === 0 ? 0 : groundY - 100,
+                x: i*canvas.width/2,
+                y: idx === 0 ? 0 : getGroundY() - height,
                 w: canvas.width/2,
-                h: idx === 0 ? groundY : 100,
+                h: height
             });
         }
     });
 }
 initBackground();
 
-
 /* ---------- Draw ---------- */
 function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    /* Background layers */
+    ctx.save();
+    ctx.scale(scale, scale);
+
     bgLayers.forEach(layer => {
         ctx.fillStyle = layer.color;
-        layer.elements.forEach(el => {
-            ctx.fillRect(el.x, el.y, el.w, el.h);
-        });
-    });
+        layer.elements.forEach(el => ctx.fillRect(el.x, el.y, el.w, el.h));
 
-    /* Scroll backgrounds */
-    bgLayers.forEach(layer => {
-        layer.elements.forEach(el => {
-            el.x -= layer.speed;
-        });
+        layer.elements.forEach(el => el.x -= layer.speed);
         if(layer.elements[0].x + layer.elements[0].w < 0){
             const el = layer.elements.shift();
             el.x = layer.elements[layer.elements.length-1].x + el.w;
@@ -263,26 +228,23 @@ function draw(){
         }
     });
 
-    /* Ground */
     ctx.fillStyle = '#8fbf8f';
-    ctx.fillRect(0, groundY, canvas.width, canvas.height-groundY);
+    ctx.fillRect(0, getGroundY(), canvas.width, canvas.height - getGroundY());
 
-    /* Player placeholder */
     ctx.fillStyle = "#e07b5a";
     ctx.fillRect(state.player.x, state.player.y, state.player.w, state.player.h);
 
-    /* Obstacles placeholder */
-    ctx.fillStyle = "#8a7a6b";
-    state.obstacles.forEach(o => ctx.fillRect(o.x, o.y, o.w, o.h));
+    state.obstacles.forEach(o => {
+        ctx.fillStyle = o.color;
+        ctx.fillRect(o.x, o.y, o.w, o.h);
+    });
 
-    /* HUD */
     ctx.fillStyle = '#3b2f2f';
     ctx.font = '20px "Patrick Hand"';
-    ctx.fillText(
-        `${state.playerName || "Player"} | Difficulty: ${state.difficulty}`,
-        10, 30
-    );
+    ctx.fillText(`${state.playerName || "Player"} | Difficulty: ${state.difficulty}`, 10, 30);
     ctx.fillText(`Score: ${Math.floor(state.score)}`, 10, 60);
+
+    ctx.restore();
 }
 
 /* ---------- Collision ---------- */
@@ -311,17 +273,12 @@ function loop(time){
     const delta = time - lastTime;
     lastTime = time;
 
-    if (state.running) {
-        if (!state.paused) {
-            update(delta);
-            draw();
-        } else {
-            // draw paused scene
-            draw();
-
-            // overlay
+    if(state.running){
+        draw();
+        if(!state.paused){ update(delta); }
+        else {
             ctx.fillStyle = "rgba(0,0,0,0.4)";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillRect(0,0,canvas.width,canvas.height);
             ctx.fillStyle = "#fff";
             ctx.font = '40px "Patrick Hand"';
             ctx.textAlign = "center";
@@ -333,3 +290,13 @@ function loop(time){
     requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
+
+/* ---------- Mobile-friendly Canvas ---------- */
+function resizeCanvas(){
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    initBackground();
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();

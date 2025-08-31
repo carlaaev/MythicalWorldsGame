@@ -17,15 +17,39 @@ const btnPause = document.getElementById("btnPause");
 
 const LOGICAL_WIDTH = 800;
 const LOGICAL_HEIGHT = 450;
-let scale = 1;
 
 /* ---------- Audio ---------- */
-const jumpSound = new Audio('assets/jump.mp3'); // place your mp3 in assets
-jumpSound.volume = 0.5;
+function playJumpSound() {
+    if (!state.mute) {
+        const jump = new Audio('assets/jump.mp3'); 
+        jump.volume = 0.5;
+        jump.play();
+    }
+}
 
-const bgMusic = new Audio('assets/background.mp3'); // background music
-bgMusic.loop = true;
-bgMusic.volume = 0.3;
+let bgMusic = null;
+function initMusic() {
+    if (!bgMusic) {
+        bgMusic = new Audio('assets/background.mp3'); // make sure this path is correct
+        bgMusic.loop = true;
+        bgMusic.volume = 0.3;
+    }
+}
+
+function startMusic() {
+    if (!state.mute && bgMusic) {
+        bgMusic.currentTime = 0;
+        bgMusic.play().catch(err => {
+            console.log("Music blocked until user interaction:", err);
+        });
+    }
+}
+
+function stopMusic() {
+    if (bgMusic) {
+        bgMusic.pause();
+    }
+}
 
 /* ---------- Game State ---------- */
 const state = {
@@ -60,7 +84,6 @@ function saveSettings(){
 /* ---------- Input ---------- */
 const keys = { left:false, right:false, jump:false };
 
-// Keyboard
 addEventListener('keydown', e => {
     if(e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
     if(e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
@@ -73,21 +96,19 @@ addEventListener('keyup', e => {
     if(e.key === ' ') keys.jump = false;
 });
 
-// Touch buttons
 function bindHold(btn, prop){
-    btn.addEventListener('pointerdown', ()=>{ keys[prop]=true; btn.setPointerCapture && btn.setPointerCapture(1); });
+    btn.addEventListener('pointerdown', ()=>{ keys[prop]=true; });
     btn.addEventListener('pointerup', ()=>keys[prop]=false);
     btn.addEventListener('pointerleave', ()=>keys[prop]=false);
 }
 bindHold(btnLeft, 'left');
 bindHold(btnRight, 'right');
 
-// Jump touch button
 btnJump.addEventListener('pointerdown', ()=>{ 
     if(state.player.onGround){
         state.player.vy = jumpPower;
         state.player.onGround = false;
-        if(!state.mute) jumpSound.play();
+        playJumpSound();
     }
 });
 btnJump.addEventListener('pointerup', ()=>keys.jump=false);
@@ -106,7 +127,6 @@ settingsForm.addEventListener('submit', e=>{
     document.getElementById('controls').classList.remove('hidden');
     document.getElementById('settings').classList.add('hidden');
 
-    if(!state.mute) bgMusic.play();
     startGame();
 });
 
@@ -147,6 +167,9 @@ function startGame(){
     state.lastSpawn = 0;
     state.running = true;
     state.paused = false;
+
+    initMusic();
+    startMusic();
 }
 
 /* ---------- Obstacles ---------- */
@@ -180,7 +203,7 @@ function update(delta){
     if(keys.jump && state.player.onGround){
         state.player.vy = jumpPower;
         state.player.onGround = false;
-        if(!state.mute) jumpSound.play();
+        playJumpSound();
     }
 
     const groundY = getGroundY();
@@ -227,12 +250,10 @@ initBackground();
 function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // Background
     bgLayers.forEach(layer=>{
         ctx.fillStyle=layer.color;
         layer.elements.forEach(el=>ctx.fillRect(el.x,el.y,el.w,el.h));
 
-        // Scroll
         layer.elements.forEach(el=>el.x -= layer.speed);
         if(layer.elements[0].x + layer.elements[0].w <0){
             const el = layer.elements.shift();
@@ -241,18 +262,14 @@ function draw(){
         }
     });
 
-    // Ground
     ctx.fillStyle="#8fbf8f";
     ctx.fillRect(0,getGroundY(),canvas.width,canvas.height-getGroundY());
 
-    // Player
     ctx.fillStyle="#e07b5a";
     ctx.fillRect(state.player.x,state.player.y,state.player.w,state.player.h);
 
-    // Obstacles
     state.obstacles.forEach(o=>{ ctx.fillStyle=o.color; ctx.fillRect(o.x,o.y,o.w,o.h); });
 
-    // HUD
     ctx.fillStyle="#3b2f2f";
     ctx.font='20px "Patrick Hand"';
     ctx.fillText(`${state.playerName||"Player"} | Difficulty: ${state.difficulty}`,10,30);
@@ -261,16 +278,14 @@ function draw(){
 
 /* ---------- Collision ---------- */
 function rectIntersect(a,b){
-    return a.x < b.x + b.w &&
-           a.x + a.w > b.x &&
-           a.y < b.y + b.h &&
-           a.y + a.h > b.y;
+    return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
 }
 
 /* ---------- Game Over ---------- */
 function gameOver(){
     state.running=false;
-    if(!state.mute) bgMusic.pause();
+    stopMusic();
+
     finalScoreEl.textContent=`Score: ${Math.floor(state.score)}`;
     if(state.score>state.highScore){
         state.highScore=Math.floor(state.score);
